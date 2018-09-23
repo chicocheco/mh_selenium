@@ -1,7 +1,7 @@
 import scrapy
 import re
 
-phone_regex = re.compile(r'(\+?(00)?\d{3})? ?-?\.?\d{2,3} ?-?\.?\d{2,3} ?-?\.?\d{2,3}( ?-?\.?\d{2,3})?')
+phone_regex = re.compile(r'(\+?(00)?\d{2,3})? ?-?\.?\d{2,3} ?-?\.?\d{2,3} ?-?\.?\d{2,3}( ?-?\.?\d{2,3})?')
 email_regex = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}')
 
 
