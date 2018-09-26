@@ -4,5 +4,6 @@
 *.json
 *.txt
 *.pyc
+_playground/*
 .idea/*
 venv/*

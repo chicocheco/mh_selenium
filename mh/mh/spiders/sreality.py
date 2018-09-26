@@ -1,69 +1,21 @@
 import scrapy
 import json
 
-# e.g.: scrapy crawl sreality -a main=2 -a ctype=1 -a pages=10 -o sreality.csv
+from .sreality_create_url import create_url
 
 """
 main: 1 - byty, 2 - domy, 3 - pozemky, 4 - komercni, 5 - ostatni
 ctype: 1 - prodej, 2 - pronajem, 3 - drazba
-area: 10 - praha, 11 - stredocesky_kraj
+area: 10 - praha, 11 - stredocesky_kraj and so on
 
 example: https://www.sreality.cz/api/cs/v2/estates?category_main_cb=2&category_type_cb=1&per_page=60
 &locality_region_id=10|11
-
 => domy, prodej, 60 zaznamu na strance, Praha + Stredocesky kraj
+
+TODO: example: https://www.sreality.cz/api/cs/v2/projects?per_page=60
 
 When converting the .csv file to an excel sheet, set the 'telefono' column to 'text' type! 
 """
-
-
-# TODO: add functionality for 'pozemky', 'komercni' and 'ostatni'
-def create_url(json_response):
-    base = 'https://www.sreality.cz/detail'
-    locality = '/' + json_response['seo']['locality']
-    id_offer = '/' + json_response['_links']['self']['href'].split('/')[-1]
-    title1 = json_response['name']['value']
-
-    lst = title1.split()
-    new_lst = []
-
-    if lst[0] == 'Prodej':
-        new_lst.insert(0, '/prodej')
-    elif lst[0] == 'Pron\u00e1jem':
-        new_lst.insert(0, '/pronajem')
-    elif lst[0] == 'Dra\u017eba':
-        new_lst.insert(0, '/drazby')
-
-    if lst[1] == 'bytu':
-        new_lst.insert(1, '/byt')
-    elif lst[1] == 'rodinn\u00e9ho':
-        new_lst.insert(2, '/rodinny')
-    elif lst[1] == 'vily':
-        new_lst.insert(2, '/vila')
-        new_lst.insert(1, '/dum')
-    elif lst[1] == 'chaty':
-        new_lst.insert(1, '/dum/chata')
-    elif lst[1] == 'chalupy':
-        new_lst.insert(1, '/dum/chalupa')
-    elif lst[1:4] == ['projektu', 'na', 'klíč']:
-        new_lst.insert(1, '/dum/na-klic')
-    elif lst[1:3] == ['zemědělské', 'usedlosti']:
-        new_lst.insert(1, '/dum/zemedelska-usedlost')
-
-    if lst[2] == 'domu':
-        new_lst.insert(1, '/dum')
-    elif lst[2] == 'atypick\u00e9':
-        new_lst.insert(2, '/atypicky')
-    elif lst[2] == '6 pokoj\u016f a v\u00edce':
-        new_lst.insert(2, '/6-a-vice')
-
-    rooms = ['1+kk', '1+1', '2+kk', '2+1', '3+kk', '3+1', '4+kk', '4+1', '5+kk', '5+1']
-    if lst[2] in rooms:
-        new_lst.insert(2, '/' + lst[2])
-
-    new_lst_joined = ''.join(new_lst)
-
-    return f'{base}{new_lst_joined}{locality}{id_offer}'
 
 
 class SrealitySpider(scrapy.Spider):
@@ -90,21 +42,14 @@ class SrealitySpider(scrapy.Spider):
             yield scrapy.Request(url, self.parse)
 
     def parse(self, response):
-
         json_response = json.loads(response.body)
-
-        # TODO: make the per_page variable an argument that can be received from the start_request function
-        per_page = 60
-        if json_response['result_size'] % per_page != 0:
-            per_page = json_response['result_size'] % per_page
-
-        links = [json_response['_embedded']['estates'][number]['_links']['self']['href'] for number in range(per_page)]
+        links = [json_response['_embedded']['estates'][number]['_links']['self']['href']
+                 for number in range(len(json_response['_embedded']['estates']))]
 
         for link in links:
             yield response.follow(f'https://www.sreality.cz/api{link}', self.parse_offer)
 
     def parse_offer(self, response):
-
         json_response = json.loads(response.body)
 
         try:
@@ -126,11 +71,11 @@ class SrealitySpider(scrapy.Spider):
         try:
             phone1 = json_response['_embedded']['seller']['phones'][0]['number']
             code1 = json_response['_embedded']['seller']['phones'][0]['code']
-        except KeyError:
+        except (IndexError, KeyError):
             try:
                 phone1 = json_response['contact']['phones'][0]['number']
                 code1 = json_response['contact']['phones'][0]['code']
-            except KeyError:
+            except (IndexError, KeyError):
                 phone1 = ''
                 code1 = ''
 
