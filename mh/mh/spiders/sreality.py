@@ -28,23 +28,32 @@ class SrealitySpider(scrapy.Spider):
         pages = getattr(self, 'pages', 1)
         main = getattr(self, 'main', 1)
         ctype = getattr(self, 'ctype', 1)
-        area = getattr(self, 'area', '')
+        area = getattr(self, 'area', None)
+        spec = getattr(self, 'spec', None)
 
-        full_area = ''
-        if area != '':
-            full_area = '&locality_region_id=' + area
+        if spec:
+            urls = [f'{spec}&page={page}' for page in range(1, int(pages) + 1)]
+        else:
+            full_area = ''
+            if area:
+                full_area = '&locality_region_id=' + area
 
-        urls = [f'https://www.sreality.cz/api/cs/v2/estates?' \
-                f'category_main_cb={main}&category_type_cb={ctype}&per_page={per_page}&page={page}{full_area}'
-                for page in range(1, int(pages) + 1)]
+            urls = [f'https://www.sreality.cz/api/cs/v2/estates?' \
+                    f'category_main_cb={main}&category_type_cb={ctype}&per_page={per_page}&page={page}{full_area}'
+                    for page in range(1, int(pages) + 1)]
 
         for url in urls:
             yield scrapy.Request(url, self.parse)
 
     def parse(self, response):
         json_response = json.loads(response.body)
-        links = [json_response['_embedded']['estates'][number]['_links']['self']['href']
-                 for number in range(len(json_response['_embedded']['estates']))]
+
+        try:
+            links = [json_response['_embedded']['estates'][number]['_links']['self']['href']
+                     for number in range(len(json_response['_embedded']['estates']))]
+        except KeyError:
+            links = [json_response['projects'][ad]['_links']['self']['href']
+                     for ad in range(len(json_response['projects']))]
 
         for link in links:
             yield response.follow(f'https://www.sreality.cz/api{link}', self.parse_offer)
@@ -58,7 +67,10 @@ class SrealitySpider(scrapy.Spider):
             try:
                 seller = json_response['contact']['name']
             except KeyError:
-                seller = '---'
+                try:
+                    seller = json_response['_embedded']['rk']['name']
+                except KeyError:
+                    seller = '---'
 
         try:
             email = json_response['_embedded']['seller']['email']
@@ -66,7 +78,10 @@ class SrealitySpider(scrapy.Spider):
             try:
                 email = json_response['contact']['email']
             except KeyError:
-                email = ''
+                try:
+                    email = json_response['_embedded']['rk']['email']
+                except KeyError:
+                    email = '---'
 
         try:
             phone1 = json_response['_embedded']['seller']['phones'][0]['number']
@@ -76,8 +91,12 @@ class SrealitySpider(scrapy.Spider):
                 phone1 = json_response['contact']['phones'][0]['number']
                 code1 = json_response['contact']['phones'][0]['code']
             except (IndexError, KeyError):
-                phone1 = ''
-                code1 = ''
+                try:
+                    phone1 = json_response['_embedded']['rk']['phones'][0]['number']
+                    code1 = json_response['_embedded']['rk']['phones'][0]['code']
+                except (IndexError, KeyError):
+                    phone1 = ''
+                    code1 = ''
 
         try:
             phone2 = json_response['_embedded']['seller']['phones'][1]['number']
@@ -90,20 +109,21 @@ class SrealitySpider(scrapy.Spider):
                 phone2 = ''
                 code2 = ''
 
-        if code1:
+        if code1 != '':
             code1 = f'+{code1} '
-        phone1_formatted = f'{code1}{phone1[0:3]} {phone1[3:6]} {phone1[6:10]}'
         if code2 != '':
             code2 = f'+{code2} '
+
         if phone2 != '' and phone2 != phone1:
-            phone2_formatted = f', {code2}{phone2[0:3]} {phone2[3:6]} {phone2[6:10]}'
-            phones = phone1_formatted + phone2_formatted
+            phones = f'{code1}{phone1[0:3]} {phone1[3:6]} {phone1[6:10]}, ' \
+                               f'{code2}{phone2[0:3]} {phone2[3:6]} {phone2[6:10]}'
         else:
-            phones = phone1_formatted
+            phones = f'{code1}{phone1[0:3]} {phone1[3:6]} {phone1[6:10]}'
 
-        title1 = json_response['name']['value']
-        title2 = json_response['locality']['value']
-        title = title1 + ', ' + title2
+        try:
+            title = f"{json_response['name']['value']}, {json_response['locality']['value']}"
+        except KeyError:
+            title = f"{json_response['project_name']}, {json_response['full_address']}"
 
-        yield {'titulo': title, 'contacto': seller, 'telefono': phones, 'email': email,
-               'url': create_url(json_response), 'api_url': response.url}
+        yield {'titulo': title, 'contacto': seller, 'telefono': phones,
+               'email': email, 'url': create_url(json_response)}
