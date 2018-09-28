@@ -51,8 +51,4 @@ def create_url(json_response):
 
         desc_string = ''.join(desc)
 
-        print(title)
-        print(title_list)
-        print(desc)
-
         return f'{base}{desc_string}/{locality}/{id_offer}'
