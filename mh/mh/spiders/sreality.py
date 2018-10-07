@@ -1,9 +1,19 @@
-import scrapy
 import json
+import datetime
+
+import scrapy
 
 from .sreality_create_url import create_url
 
 """
+required:
+pages: number of pages to scrape
+
+1st option 
+spec: copy the complete API URL with search details (firefox -> search -> ctrl-shift-e -> copy the first XHR)
+
+
+2nd option for all but projects - main and ctype argument required
 main: 1 - byty, 2 - domy, 3 - pozemky, 4 - komercni, 5 - ostatni
 ctype: 1 - prodej, 2 - pronajem, 3 - drazba
 area: 10 - praha, 11 - stredocesky_kraj and so on
@@ -22,14 +32,15 @@ class SrealitySpider(scrapy.Spider):
     name = 'sreality'
 
     def start_requests(self):
+        """Create a list of API URLs of pages with results based on attributes and send them to parse."""
 
-        # TODO: add searching specifics like a room combination
-        per_page = 60
         pages = getattr(self, 'pages', 1)
+        spec = getattr(self, 'spec', None)
+
+        per_page = 60
         main = getattr(self, 'main', 1)
         ctype = getattr(self, 'ctype', 1)
         area = getattr(self, 'area', None)
-        spec = getattr(self, 'spec', None)
 
         if spec:
             urls = [f'{spec}&page={page}' for page in range(1, int(pages) + 1)]
@@ -46,6 +57,11 @@ class SrealitySpider(scrapy.Spider):
             yield scrapy.Request(url, self.parse)
 
     def parse(self, response):
+        """Get all children API URLs of every ad in the result page and send to parse.
+
+        :param response: Response object of an API with results.
+        """
+
         json_response = json.loads(response.body)
 
         try:
@@ -59,6 +75,11 @@ class SrealitySpider(scrapy.Spider):
             yield response.follow(f'https://www.sreality.cz/api{link}', self.parse_offer)
 
     def parse_offer(self, response):
+        """Get all required fields from an API of an ad and send to the output.
+
+        :param response: Response object of an API of an ad.
+        """
+
         json_response = json.loads(response.body)
 
         try:
@@ -124,6 +145,8 @@ class SrealitySpider(scrapy.Spider):
             title = f"{json_response['name']['value']}, {json_response['locality']['value']}"
         except KeyError:
             title = f"{json_response['project_name']}, {json_response['full_address']}"
+
+        # time = datetime.datetime.now().strftime('%d/%m/%Y %H:%M')
 
         yield {'titulo': title, 'contacto': seller, 'telefono': phones,
                'email': email, 'url': create_url(json_response)}

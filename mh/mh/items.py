@@ -8,7 +8,10 @@
 import scrapy
 
 
-class MhItem(scrapy.Item):
+class RealityIdnes(scrapy.Item):
     # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+    titulo = scrapy.Field()
+    contacto = scrapy.Field()
+    telefono = scrapy.Field()
+    email = scrapy.Field()
+    url = scrapy.Field()

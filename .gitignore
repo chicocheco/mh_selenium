@@ -2,7 +2,9 @@
 *csv#
 *.csv
 *.json
+*.xlsx
 *.txt
+*.log
 *.pyc
 _playground/*
 .idea/*

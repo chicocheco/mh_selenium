@@ -1,6 +1,12 @@
 
 
-def create_url(json_response):
+def create_url(json_response: dict) -> str:
+    """Build an URL of an ad based on the data found in the API data of and ad.
+
+    :param json_response: API of a single ad in a dictionary data type.
+    :return: Complete URL as a string.
+    """
+
     # projects have a different URL
     try:
         project_base = 'https://www.sreality.cz/projekt-detail'
