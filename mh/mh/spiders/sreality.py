@@ -1,5 +1,4 @@
 import json
-import datetime
 
 import scrapy
 
@@ -74,13 +73,19 @@ class SrealitySpider(scrapy.Spider):
         for link in links:
             yield response.follow(f'https://www.sreality.cz/api{link}', self.parse_offer)
 
-    def parse_offer(self, response):
+    @staticmethod
+    def parse_offer(response):
         """Get all required fields from an API of an ad and send to the output.
 
         :param response: Response object of an API of an ad.
         """
 
         json_response = json.loads(response.body)
+
+        try:
+            title = f"{json_response['name']['value']}, {json_response['locality']['value']}"
+        except KeyError:
+            title = f"{json_response['project_name']}, {json_response['full_address']}"
 
         try:
             seller = json_response['_embedded']['seller']['user_name']
@@ -91,18 +96,7 @@ class SrealitySpider(scrapy.Spider):
                 try:
                     seller = json_response['_embedded']['rk']['name']
                 except KeyError:
-                    seller = '---'
-
-        try:
-            email = json_response['_embedded']['seller']['email']
-        except KeyError:
-            try:
-                email = json_response['contact']['email']
-            except KeyError:
-                try:
-                    email = json_response['_embedded']['rk']['email']
-                except KeyError:
-                    email = '---'
+                    seller = ''
 
         try:
             phone1 = json_response['_embedded']['seller']['phones'][0]['number']
@@ -118,7 +112,6 @@ class SrealitySpider(scrapy.Spider):
                 except (IndexError, KeyError):
                     phone1 = ''
                     code1 = ''
-
         try:
             phone2 = json_response['_embedded']['seller']['phones'][1]['number']
             code2 = json_response['_embedded']['seller']['phones'][1]['code']
@@ -137,16 +130,21 @@ class SrealitySpider(scrapy.Spider):
 
         if phone2 != '' and phone2 != phone1:
             phones = f'{code1}{phone1[0:3]} {phone1[3:6]} {phone1[6:10]}, ' \
-                               f'{code2}{phone2[0:3]} {phone2[3:6]} {phone2[6:10]}'
+                     f'{code2}{phone2[0:3]} {phone2[3:6]} {phone2[6:10]}'
         else:
             phones = f'{code1}{phone1[0:3]} {phone1[3:6]} {phone1[6:10]}'
 
         try:
-            title = f"{json_response['name']['value']}, {json_response['locality']['value']}"
+            email = json_response['_embedded']['seller']['email']
         except KeyError:
-            title = f"{json_response['project_name']}, {json_response['full_address']}"
+            try:
+                email = json_response['contact']['email']
+            except KeyError:
+                try:
+                    email = json_response['_embedded']['rk']['email']
+                except KeyError:
+                    email = ''
 
-        # time = datetime.datetime.now().strftime('%d/%m/%Y %H:%M')
-
-        yield {'titulo': title, 'contacto': seller, 'telefono': phones,
-               'email': email, 'url': create_url(json_response)}
+        # email seems to be always present
+        yield {'titulo': title.strip(), 'contacto': seller.strip(), 'telefono': phones.strip(), 'email': email.strip(),
+               'url': create_url(json_response)}
