@@ -1,12 +1,16 @@
 import json
 import os
 import sys
+import datetime
+import time
+import pyautogui
 
 from openpyxl import Workbook
 from openpyxl import load_workbook
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_profile import AddonFormatError
-from selenium.common.exceptions import NoSuchElementException, InvalidSessionIdException
+from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
+from selenium.common.exceptions import NoSuchElementException
 
 
 # temporal fix for webdriver.FirefoxProfile()
@@ -34,47 +38,58 @@ def start_crawl(start_url, output_filename, pages=None, lastp=None, driver=None)
     :param start_url: URL of the first page with results.
     :param output_filename: Name of the output file (example.xlsx) to save the scraped data into.
     :param pages: Number of pages of results to scrape.
-    :param lastp: Declare whether the current URL is the last or not.
+    :param lastp: States whether the current URL is the last or not.
     :param driver: Instance of Firefox.
     """
 
-    profile = FirefoxProfileWithWebExtensionSupport()
-    profile.set_preference('permissions.default.image', 2)
-    profile.add_extension(extension='/home/standa/PycharmProjects/mh/selenium/noscript.xpi')
-    profile.update_preferences()
-
+    profile = FirefoxProfile(profile_directory='/home/standa/.mozilla/firefox/zumag6xp.wd_milanuncios/')
     if not driver:
-        driver = webdriver.Firefox(firefox_profile=profile)
+        driver = webdriver.Firefox(firefox_profile=profile, options=options)
+        time.sleep(2)
+        # re-enable ublock and noscript "by hand"
+        pyautogui.PAUSE = 0.5
+        pyautogui.hotkey('winleft', 'left')
+        pyautogui.hotkey('ctrl', 'shift', 'a')
+        pyautogui.click(x=474, y=207, clicks=2, interval=0.25, button='left')
+        pyautogui.click(x=480, y=267, clicks=2, interval=0.25, button='left')
+
     print(f'Opening URL: {start_url}')
     driver.get(start_url)
-    driver.minimize_window()
 
-    elements_links = driver.find_elements_by_xpath('//a[@class="re-Card-link"]')
+    elements_links = driver.find_elements_by_xpath('//a[@class="aditem-detail-title"]')
     list_of_links = [link.get_attribute('href') for link in elements_links]
+
     if len(list_of_links) > 0:
         print(f'Found {len(list_of_links)} ads on the page.\n'
               f'Crawling...\n')
     else:
         print('No ads found on the page.\n')
+        # TODO: How to break out of the loop??
 
     for link in list_of_links:
         parse_add(link, driver, output_filename)
 
     if lastp:
-        print('This was the last page\n'
+        print('This was the last page.\n'
               'Closing Firefox...')
-        driver.close()
+        driver.quit()
 
     # create URLs for additional pages
     if pages:
-        url_pages = []
-        for page in range(2, pages + 1):
-            url_pages.append(input_start_url.replace('l?', f'l/{page}?'))
-        for url_page in url_pages:
-            if url_page == url_pages[-1]:
-                start_crawl(url_page, output_filename, driver=driver, lastp=True)
-            else:
-                start_crawl(url_page, output_filename, driver=driver)
+        if pages == 1:
+            print('This was the last page\n'
+                  'Closing Firefox...')
+            driver.quit()
+        else:
+            url_pages = []
+            for page in range(18, pages + 1):
+                url_pages.append(input_start_url + f'?pagina={page}')
+            for url_page in url_pages:
+                if url_page == url_pages[-1]:
+                    start_crawl(url_page, output_filename, driver=driver, lastp=True)
+                else:
+                    print(f"Page number {url_page.split('=')[-1]}.")
+                    start_crawl(url_page, output_filename, driver=driver)
 
 
 def parse_add(ad_url, driver, output_filename):
@@ -88,39 +103,44 @@ def parse_add(ad_url, driver, output_filename):
     driver.get(ad_url)
     scraped_list = []
 
-    # TODO: safely skip dead links
     try:
-        title = driver.find_element_by_xpath('//h1[@class="property-title"]').text
-        if title == '#':
-            title = 'not-found'
+        title = driver.find_element_by_xpath('//div[@class="pagAnuTituloBox"]/a').text
     except NoSuchElementException:
         title = 'not-found'
+
     scraped_list.append(title)
+    scraped_list.append(ad_url)
+
+    ad_id = ad_url.split('/')[-1][-13:-4]
+    seller_url = f'https://www.milanuncios.com/datos-contacto/?usePhoneProxy=0&from=detail&id={ad_id}'
+    driver.get(seller_url)
 
     try:
-        seller = driver.find_element_by_xpath('//span[@id="ctl00_ucInfoRequestGeneric_divContact"]').text[10:]
+        seller = driver.find_element_by_xpath('//strong').text
     except NoSuchElementException:
         seller = 'not-found'
-    scraped_list.append(seller)
+    scraped_list.insert(1, seller)
 
     try:
-        phone = driver.find_element_by_name('ctl00$hid_AdPhone').get_attribute('value')
-        if phone == '#':
-            phone = 'not-found'
-        else:
-            phone = f'{phone[4:7]} {phone[7:10]} {phone[10:13]}'
+        phone1 = driver.find_element_by_xpath('//div[@class="telefonos"]').text
     except NoSuchElementException:
-        phone = 'not-found'
-        # TODO: phone regex from description
-    scraped_list.append(phone)
+        phone1 = 'not-found'
+
+    try:
+        phone2 = driver.find_elements_by_xpath('//div[@class="telefonos"]')[1].text
+    except IndexError:
+        phone2 = 'not-found'
+
+    if phone2 != 'not-found':
+        phone = phone1 + ', ' + phone2
+    else:
+        phone = phone1
+
+    scraped_list.insert(2, phone)
 
     # TODO: email regex from description
     email = 'not-found'
-    scraped_list.append(email)
-
-    scraped_list.append(ad_url)
-
-
+    scraped_list.insert(3, email)
 
     print(f'{title} / {seller} / {phone} / {email}\n{ad_url}')
 
@@ -154,11 +174,18 @@ def append_list_excel(scraped_list, output_filename):
 
 # start_url = input('Enter an URL with filtered ads:\n')
 
+input_start_url = 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'
+output_file = 'milanuncios.xlsx'
 
-input_start_url = 'https://www.fotocasa.es/es/alquiler/casas/ceuta-provincia/todas-las-zonas/l' \
-                  '?latitude=40&longitude=-4&combinedLocationIds=724,10,51,0,0,0,0,0,0&gridType=3'
-output_file = 'fotocasa.xlsx'
+begin = datetime.datetime.now()
+print(f"Started at {begin.strftime('%c')}")
 
-start_crawl(input_start_url, output_file, 3)
+start_crawl(input_start_url, output_file, 30)
+
+end = datetime.datetime.now()
+print(f"Finished at {end.strftime('%c')}")
+delta = str(end - begin).split('.')[0]
+print(f'Time duration: {delta}')
+
 
 # TODO: delete duplicates from the output

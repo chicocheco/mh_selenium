@@ -1,5 +1,3 @@
-import random
-
 # -*- coding: utf-8 -*-
 
 # Scrapy settings for mh project
@@ -20,8 +18,13 @@ NEWSPIDER_MODULE = 'mh.spiders'
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 # USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64; rv:62.0) Gecko/20100101 Firefox/62.0'
 
+DOWNLOADER_MIDDLEWARES = {
+    'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+    'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 400,
+}
+
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
@@ -93,5 +96,5 @@ ROBOTSTXT_OBEY = True
 
 # LOG_STDOUT = True
 # LOG_FILE = './scrapy_output.txt'
-#
+
 # DUPEFILTER_DEBUG = True
