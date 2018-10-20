@@ -44,7 +44,7 @@ def start_crawl(start_url, output_filename, pages=None, lastp=None, driver=None)
 
     profile = FirefoxProfile(profile_directory='/home/standa/.mozilla/firefox/zumag6xp.wd_milanuncios/')
     if not driver:
-        driver = webdriver.Firefox(firefox_profile=profile, options=options)
+        driver = webdriver.Firefox(firefox_profile=profile)
         time.sleep(2)
         # re-enable ublock and noscript "by hand"
         pyautogui.PAUSE = 0.5
@@ -78,11 +78,11 @@ def start_crawl(start_url, output_filename, pages=None, lastp=None, driver=None)
     if pages:
         if pages == 1:
             print('This was the last page\n'
-                  'Closing Firefox...')
+                  'Closing Firefox...\n')
             driver.quit()
         else:
             url_pages = []
-            for page in range(18, pages + 1):
+            for page in range(2, pages + 1):
                 url_pages.append(input_start_url + f'?pagina={page}')
             for url_page in url_pages:
                 if url_page == url_pages[-1]:
