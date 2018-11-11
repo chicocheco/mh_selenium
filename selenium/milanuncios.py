@@ -3,14 +3,17 @@ import os
 import sys
 import datetime
 import time
-import pyautogui
+import re
 
+import pyautogui
 from openpyxl import Workbook
 from openpyxl import load_workbook
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_profile import AddonFormatError
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.common.exceptions import NoSuchElementException
+
+email_regex = re.compile(r'[a-zA-Z0-9._%+-]+ ?@ ?[a-zA-Z0-9.-]+ ?\. ?[a-zA-Z]{2,4}')
 
 
 # temporal fix for webdriver.FirefoxProfile()
@@ -32,6 +35,10 @@ class FirefoxProfileWithWebExtensionSupport(webdriver.FirefoxProfile):
                 raise AddonFormatError(str(e), sys.exc_info()[2])
 
 
+class NoAdsFound(Exception):
+    pass
+
+
 def start_crawl(start_url, output_filename, pages=None, lastp=None, driver=None):
     """Launch Firefox and get URLs of individual ads to parse data from. Close Firefox after the last page was parsed.
 
@@ -47,6 +54,7 @@ def start_crawl(start_url, output_filename, pages=None, lastp=None, driver=None)
         driver = webdriver.Firefox(firefox_profile=profile)
         time.sleep(2)
         # re-enable ublock and noscript "by hand"
+        # TODO: find a better way around to be able to run the script in headless mode
         pyautogui.PAUSE = 0.5
         pyautogui.hotkey('winleft', 'left')
         pyautogui.hotkey('ctrl', 'shift', 'a')
@@ -64,7 +72,8 @@ def start_crawl(start_url, output_filename, pages=None, lastp=None, driver=None)
               f'Crawling...\n')
     else:
         print('No ads found on the page.\n')
-        # TODO: How to break out of the loop??
+        # don't continue, terminate the script
+        raise NoAdsFound
 
     for link in list_of_links:
         parse_add(link, driver, output_filename)
@@ -89,7 +98,13 @@ def start_crawl(start_url, output_filename, pages=None, lastp=None, driver=None)
                     start_crawl(url_page, output_filename, driver=driver, lastp=True)
                 else:
                     print(f"Page number {url_page.split('=')[-1]}.")
-                    start_crawl(url_page, output_filename, driver=driver)
+                    try:
+                        start_crawl(url_page, output_filename, driver=driver)
+                    except NoAdsFound:
+                        print('Breaking the loop\n'
+                              'Closing Firefox...\n')
+                        driver.quit()
+                        break
 
 
 def parse_add(ad_url, driver, output_filename):
@@ -108,10 +123,31 @@ def parse_add(ad_url, driver, output_filename):
     except NoSuchElementException:
         title = 'not-found'
 
-    scraped_list.append(title)
-    scraped_list.append(ad_url)
+    # this is questionable since from 538 ads there were only 5 emails...
+    # it doesn't search for email addresses like "something. something@gmail.com",
+    # the part before @ has to be a continuous string with no spaces and it mostly is
+    try:
+        desc = driver.find_element_by_xpath('//p[@class="pagAnuCuerpoAnu"]').text
+    except NoSuchElementException:
+        desc = None
 
-    ad_id = ad_url.split('/')[-1][-13:-4]
+    m_email = email_regex.search(desc)
+    if m_email:
+        email = m_email.group().strip()
+    else:
+        email = ''
+
+    # scraped_list.append(title)
+    # scraped_list.append(email)
+    # scraped_list.append(ad_url)
+    # can be replaced by .extend
+
+    scraped_list.extend([title, email, ad_url])
+
+    # open the contact details box
+    # TODO: improve this
+    if ad_url.split('/')[-1][-13:-4].isdigit() and len(ad_url.split('/')[-1][-13:-4]) == 9:
+        ad_id = ad_url.split('/')[-1][-13:-4]
     seller_url = f'https://www.milanuncios.com/datos-contacto/?usePhoneProxy=0&from=detail&id={ad_id}'
     driver.get(seller_url)
 
@@ -124,27 +160,24 @@ def parse_add(ad_url, driver, output_filename):
     try:
         phone1 = driver.find_element_by_xpath('//div[@class="telefonos"]').text
     except NoSuchElementException:
-        phone1 = 'not-found'
+        phone1 = ''
 
     try:
         phone2 = driver.find_elements_by_xpath('//div[@class="telefonos"]')[1].text
     except IndexError:
-        phone2 = 'not-found'
+        phone2 = ''
 
-    if phone2 != 'not-found':
+    if phone2 != '':
         phone = phone1 + ', ' + phone2
     else:
         phone = phone1
 
     scraped_list.insert(2, phone)
 
-    # TODO: email regex from description
-    email = 'not-found'
-    scraped_list.insert(3, email)
+    print(f'{title} / {seller} / {"not-found" if phone == "" else phone} / '
+          f'{"not-found" if email == "" else email}\n{ad_url}')
 
-    print(f'{title} / {seller} / {phone} / {email}\n{ad_url}')
-
-    if phone != 'not-found' or email != 'not-found':
+    if phone != '' or email != '':
         print('--- Saved ---\n')
         append_list_excel(scraped_list, output_filename)
     else:
@@ -186,6 +219,3 @@ end = datetime.datetime.now()
 print(f"Finished at {end.strftime('%c')}")
 delta = str(end - begin).split('.')[0]
 print(f'Time duration: {delta}')
-
-
-# TODO: delete duplicates from the output

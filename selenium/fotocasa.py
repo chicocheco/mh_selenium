@@ -63,7 +63,7 @@ def start_crawl(start_url, output_filename, pages=None, lastp=None, driver=None)
     if lastp:
         print('This was the last page\n'
               'Closing Firefox...')
-        driver.close()
+        driver.quit()
 
     # create URLs for additional pages
     if pages:
@@ -119,8 +119,6 @@ def parse_add(ad_url, driver, output_filename):
     scraped_list.append(email)
 
     scraped_list.append(ad_url)
-
-
 
     print(f'{title} / {seller} / {phone} / {email}\n{ad_url}')
 
