@@ -33,6 +33,7 @@ class SrealitySpider(scrapy.Spider):
     def start_requests(self):
         """Create a list of API URLs of pages with results based on attributes and send them to parse."""
 
+        # TODO: find a way of finding the API URL automatically
         pages = getattr(self, 'pages', 1)
         spec = getattr(self, 'spec', None)
 
