@@ -26,7 +26,7 @@ The input URL must be always the first URL of the search results (listing page n
      - https://www.vivaweek.com (FR)
      - www.traum-ferienwohnungen.de (DE)
 
-Edit the followin line in contact_scraper.py and execute:
+Edit the following line in contact_scraper.py and execute:
 p = mp.Process(target=start_crawl(first_url, to_page, from_page, output_xlsx=file.xlsx))
 
 where arguments: 
