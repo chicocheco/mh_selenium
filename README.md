@@ -36,4 +36,4 @@ where arguments:
 - output_xlsx=file.xlsx (file name ending with '.xlsx' (str) - optional), if not input, store in database
   
 example:
-p = mp.Process(target=start_crawl('https://vacances.seloger.com/location-vacances-france/savoie-10000007425', 30, 15, output_xlsx=file.xlsx))
+p = mp.Process(target=start_crawl('https://vacances.seloger.com/location-vacances-france/savoie-10000007425', 30, 15, output_xlsx='file.xlsx'))
