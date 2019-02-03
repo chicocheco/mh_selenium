@@ -8,4 +8,5 @@
 *.pyc
 _playground/*
 .idea/*
+venv370/*
 venv/*
