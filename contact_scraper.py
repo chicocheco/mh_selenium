@@ -32,35 +32,30 @@ from selenium.webdriver.firefox.firefox_profile import AddonFormatError, Firefox
 from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, InvalidElementStateException
 
-import selectors
+import sl_selectors
 
-db_connected = False
+conn, cur = None, None
 
 
 def connect_db():
     """Create a connection to a database located at localhost."""
 
-    global conn
-    global cur
-    global db_connected
+    global conn, cur
     conn = pymysql.connect(host='localhost', unix_socket='/run/mysqld/mysqld.sock',
                            user='mh_selenium', passwd='mh_selenium', db='mh', charset='utf8')
     cur = conn.cursor()
-    cur.execute("USE mh")
-    db_connected = True
+    cur.execute('USE mh')
     print('--- Database connection established ---\n')
 
 
 def disconnect_db():
     """Safely close a connection to a database if existed."""
 
-    global cur
-    global conn
-    if cur and conn:
+    global conn, cur
+    if conn and cur:
         cur.close()
         conn.close()
-        cur = None
-        conn = None
+        conn, cur = None, None
         print('--- Database connection closed ---\n')
 
 
@@ -118,24 +113,17 @@ def open_firefox_exts_headless() -> webdriver:
 
 
 def recognize_sln_selectors(driver: webdriver = None, first_listing_url: str = None,
-                            from_page: int = None, to_page: int = None) -> selectors:
-    """Based on the input first listing URL, return the corresponding set of Selenium selectors for data scraping.
-
-    :param driver: Instance of Firefox Selenium webdriver.
-    :param first_listing_url:
-    :param from_page:
-    :param to_page:
-    :return:
-    """
+                            from_page: int = None, to_page: int = None) -> sl_selectors:
+    """Based on the input first listing URL, return the corresponding set of Selenium selectors for data scraping."""
 
     websites = {'https://www.traum-ferienwohnungen.de':
-                selectors.TraumFerienWohnungen(driver, first_listing_url, from_page, to_page),
+                sl_selectors.TraumFerienWohnungen(driver, first_listing_url, from_page, to_page),
                 'https://www.milanuncios.com':
-                selectors.MilAnuncios(driver, first_listing_url, from_page, to_page),
+                sl_selectors.MilAnuncios(driver, first_listing_url, from_page, to_page),
                 'https://www.vivaweek.com':
-                selectors.VivaWeek(driver, first_listing_url, from_page, to_page),
+                sl_selectors.VivaWeek(driver, first_listing_url, from_page, to_page),
                 'https://vacances.seloger.com':
-                selectors.VacancesSeloger(driver, first_listing_url, from_page, to_page)
+                sl_selectors.VacancesSeloger(driver, first_listing_url, from_page, to_page)
                 }
 
     for website, sln_selector in websites.items():
@@ -146,11 +134,8 @@ def recognize_sln_selectors(driver: webdriver = None, first_listing_url: str = N
 
 
 def evaluate_paging(from_page: int = None, to_page: int = None) -> None:
-    """Print out a warning in case of starting the Selenium scraper with incorrect arguments and terminate.
+    """Print out a warning in case of starting the Selenium scraper with incorrect arguments and terminate."""
 
-    :param from_page:
-    :param to_page:
-    """
     if to_page and from_page:
         if to_page < from_page:
             print(f'Set the upper limit ({to_page}) higher than the lower limit ({from_page}) '
@@ -164,12 +149,8 @@ def evaluate_paging(from_page: int = None, to_page: int = None) -> None:
 
 
 def get_exact_num_last_page(driver: webdriver, first_listing_url: str) -> int:
-    """Get the number of the last page from the first listing URL.
+    """Get the number of the last page from the first listing URL."""
 
-    :param driver: Instance of Firefox Selenium webdriver.
-    :param first_listing_url:
-    :return:
-    """
     print('Looking for the number of the last page:')
     driver = open_listing_url(first_listing_url, driver)
     exact_num_last_page = int(recognize_sln_selectors(driver).get_number_last_page())
@@ -177,36 +158,25 @@ def get_exact_num_last_page(driver: webdriver, first_listing_url: str) -> int:
 
 
 def open_listing_url(listing_url: str, driver: webdriver = None) -> webdriver:
-    """Attempt to open a listing URL until it gets loaded.
+    """Attempt to open a listing URL until it gets loaded."""
 
-    :param listing_url:
-    :param driver: Instance of Firefox Selenium webdriver.
-    :return: Instance of Firefox Selenium webdriver.
-    """
     while True:
         try:
             if not driver:
                 driver = open_firefox_exts_headless()
             print(f'Opening URL: {listing_url}')
             driver.get(listing_url)
-            # if get method succeeded, break out
             break
         except TimeoutException:
             close_firefox(driver, time_exc=True)
+            driver = None
             time.sleep(3)
     return driver
 
 
 def parse_listing_url(driver: webdriver, listing_url: str, first_listing_url: str,
                       output_xlsx: str, add_pages: bool) -> None:
-    """Get a list of all individual direct URLs of estates found in a listing URL. Terminate if no URLs found.
-
-    :param driver: Instance of Firefox Selenium webdriver.
-    :param listing_url:
-    :param first_listing_url:
-    :param output_xlsx:
-    :param add_pages:
-    """
+    """Get a list of all individual direct URLs of estates found in a listing URL. Terminate if no URLs found."""
 
     estate_urls = recognize_sln_selectors(driver).estate_urls()
     if len(estate_urls) > 0:
@@ -223,49 +193,42 @@ def parse_listing_url(driver: webdriver, listing_url: str, first_listing_url: st
 
 def restart_firefox(driver: webdriver, restart: bool, listing_url: str, first_listing_url: str,
                     output_xlsx: str, add_pages: bool) -> webdriver:
-    """Restart Firefox in order to avoid filling up RAM caused by Selenium memory leaks.
+    """Restart Firefox in order to avoid filling up RAM caused by Selenium memory leaks."""
 
-    :param driver:
-    :param restart:
-    :param listing_url:
-    :param first_listing_url:
-    :param output_xlsx:
-    :param add_pages:
-    :return: Instance of Firefox Selenium webdriver.
-    """
+    # TODO: this needs testing and probably confirming whether the allocated memory is being freed for real
     close_firefox(driver, restart=restart)
-    driver = open_listing_url(listing_url, driver)
+    driver = None  # destroy
+    driver = open_listing_url(listing_url)
     parse_listing_url(driver, listing_url, first_listing_url, output_xlsx, add_pages)
     return driver
 
 
 def close_firefox(driver: webdriver, restart: bool = False, lastp: bool = False,
                   no_ads_found: bool = False, time_exc: bool = False) -> None:
-    """Close, quit, destroy the webdriver instance of Firefox and safely close the DB connection.
+    """Close, quit, destroy the webdriver instance of Firefox and safely close the DB connection."""
 
-    :param driver:
-    :param restart:
-    :param lastp:
-    :param no_ads_found:
-    :param time_exc:
-    :return:
-    """
     if restart:
         print('Restart of Firefox requested.\n'
               'Closing Firefox...\n')
-    elif lastp:
-        print('This was the last page that was set or found in the first listing URL.\n'
-              'Closing Firefox...\n')
-    elif no_ads_found:
-        print('No ads found on the page. Breaking out of the loop.\n'
-              'Closing Firefox...\n')
+        driver.close()
+        driver.quit()
     elif time_exc:
         print('Failed to load the listing URL in time.\n'
               'Closing Firefox and retrying...\n')
-    driver.close()
-    driver.quit()
-    driver = None  # destroy the contents of this variable
-    disconnect_db()
+        driver.close()
+        driver.quit()
+    elif lastp:
+        print('This was the last page that was set or found in the first listing URL.\n'
+              'Closing Firefox...\n')
+        driver.close()
+        driver.quit()
+        disconnect_db()
+    elif no_ads_found:
+        print('No ads found on the page. Breaking out of the loop.\n'
+              'Closing Firefox...\n')
+        driver.close()
+        driver.quit()
+        disconnect_db()
 
 
 # TODO: Re-design for naming the xlsx file automatically and setting output_xlsx only to False/True.
@@ -416,7 +379,7 @@ def store_in_database(title: str, contact_name: str, list_phone_numbers: list, l
     :param first_listing_url: Copy of the first listing URL (page 1).
     """
 
-    if not db_connected:
+    if not cur and conn:
         connect_db()
     print_data(title, contact_name, list_phone_numbers, list_emails, estate_url)
 
@@ -517,14 +480,15 @@ def store_in_xlsx_file(title: str, contact_name: str, list_phone_numbers: list, 
 begin = datetime.datetime.now()
 print(f"Started at {begin.strftime('%c')}")
 
+# TODO: add this via argprs module
 # input_start_url = input('Enter an URL with a listing of ads:\n')
 # output_file = input('Enter a name of an output .xlsx file (extension name included):\n')
 # to_page = input('Enter a number of pages to scrape the data up to:\n')
 
 # first_url = 'https://vacances.seloger.com/location-vacances-france/savoie-10000007425'
-# first_url = 'https://www.traum-ferienwohnungen.de/europa/deutschland/schleswig-holstein/ergebnisse/' \
-#             '?person=34&is_in_clicked_search=1'
-first_url = 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'
+first_url = 'https://www.traum-ferienwohnungen.de/europa/deutschland/schleswig-holstein/ergebnisse/' \
+            '?person=34&is_in_clicked_search=1'
+# first_url = 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'
 # first_url = 'https://www.vivaweek.com/fr/locations-vacances/herault-languedoc-roussillon-france/' \
 #             'hebergement-type:appartement,studio,autre-appartement,bateau,catamaran,peniche,voilier,yacht,' \
 #             'autre-bateau,bungalow-mobilhome,chalet,chateau-manoir,gite,insolite,cabane-arbre,moulin,phare,' \
@@ -542,7 +506,7 @@ if __name__ == '__main__':
         p.join()
         # all memory used by the subprocess will be freed to the OS
     finally:
-        if db_connected:
+        if conn and cur:
             disconnect_db()
 
 end = datetime.datetime.now()
