@@ -14,13 +14,17 @@ class TraumFerienWohnungen:
         self.from_page = from_page
         self.to_page = to_page
 
+    def setup_driver(self):
+        self.driver.maximize_window()
+
+    def get_number_last_page(self):
+        self.setup_driver()
+        return int(self.driver.find_element_by_xpath('//ul[@id="results-paginator"]/li[8]').text)
+
     def estate_urls(self):
         webelement_estate_urls = self.driver.find_elements_by_xpath('//a[@class="js-link"]')
         estate_urls = [webelement_estate_url.get_attribute('href') for webelement_estate_url in webelement_estate_urls]
         return estate_urls
-
-    def get_number_last_page(self):
-        return int(self.driver.find_element_by_xpath('//ul[@id="results-paginator"]/li[8]').text)
 
     def create_add_listing_urls(self):
         # listings from page 2 and on have different URL pattern
@@ -39,7 +43,7 @@ class TraumFerienWohnungen:
 
     def contact_name(self):
         try:
-            return self.driver.find_element_by_xpath('//p[@class="fs-xl bold mb-s mt-s m--tac"]').text
+            return self.driver.find_element_by_xpath('//p[@class="fs-xl bold mb-s mt-s m--tac"]').text or 'Anonymous'
         except NoSuchElementException:
             return 'Anonymous'
 
@@ -76,8 +80,6 @@ class TraumFerienWohnungen:
         return []
 
 
-# TODO: this website seems to need some implicit waits, sometimes the page is loaded already,
-#  but the selectors can't identify the elements anywa
 class MilAnuncios:
 
     phone_number_detail_opened = False
@@ -88,17 +90,17 @@ class MilAnuncios:
         self.from_page = from_page
         self.to_page = to_page
 
-        # raise implicit wait from 0 to 5 secs
-        if self.driver:
-            self.driver.implicitly_wait(5)
+    def setup_driver(self):
+        self.driver.implicitly_wait(5)
+
+    def get_number_last_page(self):
+        self.setup_driver()
+        return int(self.driver.find_element_by_xpath('//div[@class="adlist-paginator-summary"]').text.split(' ')[-1])
 
     def estate_urls(self):
         webelement_estate_urls = self.driver.find_elements_by_xpath('//a[@class="aditem-detail-title"]')
         estate_urls = [webelement_estate_url.get_attribute('href') for webelement_estate_url in webelement_estate_urls]
         return estate_urls
-
-    def get_number_last_page(self):
-        return int(self.driver.find_element_by_xpath('//div[@class="adlist-paginator-summary"]').text.split(' ')[-1])
 
     def create_add_listing_urls(self):
         # listings from page 2 and on have different URL pattern
@@ -182,13 +184,17 @@ class VivaWeek:
         self.from_page = from_page
         self.to_page = to_page
 
+    def setup_driver(self):
+        self.driver.maximize_window()
+
+    def get_number_last_page(self):
+        self.setup_driver()
+        return int(self.driver.find_element_by_xpath('//ul[@class="pagination"]/li[7]').text)
+
     def estate_urls(self):
         webelement_estate_urls = self.driver.find_elements_by_xpath('//h2/a')
         estate_urls = [webelement_estate_url.get_attribute('href') for webelement_estate_url in webelement_estate_urls]
         return estate_urls
-
-    def get_number_last_page(self):
-        return int(self.driver.find_element_by_xpath('//ul[@class="pagination"]/li[7]').text)
 
     def create_add_listing_urls(self):
         # listings from page 2 and on have different URL pattern
@@ -255,19 +261,20 @@ class VacancesSeloger:
         self.from_page = from_page
         self.to_page = to_page
 
-        if self.driver:
-            # force mobile version to avoid problems with clicking on some elements
-            self.driver.set_window_position(0, 0)
-            self.driver.set_window_size(600, 600)
+    def setup_driver(self):
+        # not able to open phone detail if mobile version of website not forced
+        self.driver.set_window_size(600, 700)
+        self.driver.set_window_position(0, 0)
+
+    def get_number_last_page(self):
+        self.setup_driver()
+        return int(self.driver.find_element_by_xpath('//a[@class="pagination-chevron to-last-chevron"]')
+                   .get_attribute('href').split('/')[-1])
 
     def estate_urls(self):
         webelement_estate_urls = self.driver.find_elements_by_xpath('//a[@class="vignette-link"]')
         estate_urls = [webelement_estate_url.get_attribute('href') for webelement_estate_url in webelement_estate_urls]
         return estate_urls
-
-    def get_number_last_page(self):
-        return int(self.driver.find_element_by_xpath('//a[@class="pagination-chevron to-last-chevron"]')
-                   .get_attribute('href').split('/')[-1])
 
     def create_add_listing_urls(self):
         # listings from page 2 and on have different URL pattern
@@ -329,8 +336,3 @@ class Amivac(VacancesSeloger):
         self.first_listing_url = first_listing_url
         self.from_page = from_page
         self.to_page = to_page
-
-        if self.driver:
-            # force mobile version to avoid problems with clicking on some elements
-            self.driver.set_window_position(0, 0)
-            self.driver.set_window_size(600, 600)

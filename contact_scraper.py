@@ -35,27 +35,30 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException,
 import sl_selectors
 
 conn, cur = None, None
+db_connected = False
 
 
 def connect_db():
     """Create a connection to a database located at localhost."""
 
-    global conn, cur
+    global conn, cur, db_connected
     conn = pymysql.connect(host='localhost', unix_socket='/run/mysqld/mysqld.sock',
                            user='mh_selenium', passwd='mh_selenium', db='mh', charset='utf8')
     cur = conn.cursor()
     cur.execute('USE mh')
+    db_connected = True
     print('--- Database connection established ---\n')
 
 
 def disconnect_db():
     """Safely close a connection to a database if existed."""
 
-    global conn, cur
+    global conn, cur, db_connected
     if conn and cur:
         cur.close()
         conn.close()
         conn, cur = None, None
+        db_connected = False
         print('--- Database connection closed ---\n')
 
 
@@ -257,30 +260,8 @@ def start_crawl(listing_url: str, to_page: int = None, from_page: int = None, ou
         driver = restart_firefox(driver, restart, listing_url, first_listing_url, output_xlsx, add_pages)
 
     if not add_pages:
-        driver = open_firefox_exts_headless()
-        exact_num_last_page = get_exact_num_last_page(driver, first_listing_url)
-        if to_page:
-            if exact_num_last_page < to_page:
-                print(f'The required page number {to_page} does not exist.\n'
-                      f'The upper limit was lowered to the last page number {exact_num_last_page}.\n')
-                to_page = exact_num_last_page
-                if from_page > to_page:
-                    from_page = to_page
-            if from_page == to_page or to_page == 1:
-                print(f'Scraping only this single page number {to_page} ({exact_num_last_page} pages in total).\n')
-            else:
-                print(f'Scraping from a page number {from_page if from_page else "1"} '
-                      f'to a page number {to_page} ({exact_num_last_page} pages in total).\n')
-        else:
-            print(f'Scraping from a page number {from_page if from_page else "1"} '
-                  f'to the last page number {exact_num_last_page}.\n')
-            to_page = exact_num_last_page
-        if not from_page or from_page == 1:
-            print('Page number: 1 | Position: 1')
-            parse_listing_url(driver, listing_url, first_listing_url, output_xlsx, add_pages)
-            if from_page == to_page:
-                to_page = None
-                lastp = True
+        driver, from_page, lastp, to_page = \
+            process_first_listing_url(add_pages, first_listing_url, from_page, lastp, listing_url, output_xlsx, to_page)
     else:
         driver = open_listing_url(listing_url, driver)
         parse_listing_url(driver, listing_url, first_listing_url, output_xlsx, add_pages)
@@ -289,28 +270,61 @@ def start_crawl(listing_url: str, to_page: int = None, from_page: int = None, ou
         close_firefox(driver, lastp=lastp)
 
     if to_page:
-        listing_page = recognize_sln_selectors(first_listing_url=first_listing_url, from_page=from_page,
-                                               to_page=to_page).create_add_listing_urls()
-        counter = 2 if not from_page else 1
-        for page_num, listing_url in listing_page:
-            if page_num == to_page:
-                print(f"Page number: {page_num} (the last page) | Position: {counter}")
-                start_crawl(listing_url, output_xlsx, driver=driver, lastp=True, add_pages=True)
-            else:
-                print(f"Page number: {page_num} | Position: {counter}")
-                try:
-                    if counter % 10 == 0:
-                        # this driver variable replaces the previous one that was closed
-                        start_crawl(listing_url, output_xlsx, driver=driver, add_pages=True, restart=True,
-                                    first_listing_url=first_listing_url)
-                        counter += 1
-                    else:
-                        start_crawl(listing_url, output_xlsx, driver=driver, add_pages=True,
-                                    first_listing_url=first_listing_url)
-                        counter += 1
-                except NoAdsFound:
-                    close_firefox(driver, no_ads_found=True)
-                    break
+        process_additional_listing_urls(driver, first_listing_url, from_page, output_xlsx, to_page)
+
+
+def process_first_listing_url(add_pages, first_listing_url, from_page, lastp, listing_url, output_xlsx,
+                              to_page):
+    driver = open_firefox_exts_headless()
+    exact_num_last_page = get_exact_num_last_page(driver, first_listing_url)
+    if to_page:
+        if exact_num_last_page < to_page:
+            print(f'The required page number {to_page} does not exist.\n'
+                  f'The upper limit was lowered to the last page number {exact_num_last_page}.\n')
+            to_page = exact_num_last_page
+            if from_page > to_page:
+                from_page = to_page
+        if from_page == to_page or to_page == 1:
+            print(f'Scraping only this single page number {to_page} ({exact_num_last_page} pages in total).\n')
+        else:
+            print(f'Scraping from a page number {from_page if from_page else "1"} '
+                  f'to a page number {to_page} ({exact_num_last_page} pages in total).\n')
+    else:
+        print(f'Scraping from a page number {from_page if from_page else "1"} '
+              f'to the last page number {exact_num_last_page}.\n')
+        to_page = exact_num_last_page
+    if not from_page or from_page == 1:
+        print('Page number: 1 | Position: 1')
+        parse_listing_url(driver, listing_url, first_listing_url, output_xlsx, add_pages)
+        if from_page == to_page:
+            to_page = None
+            lastp = True
+    return driver, from_page, lastp, to_page
+
+
+def process_additional_listing_urls(driver, first_listing_url, from_page, output_xlsx, to_page):
+    listing_page = recognize_sln_selectors(first_listing_url=first_listing_url, from_page=from_page,
+                                           to_page=to_page).create_add_listing_urls()
+    counter = 2 if not from_page else 1
+    for page_num, listing_url in listing_page:
+        if page_num == to_page:
+            print(f"Page number: {page_num} (the last page) | Position: {counter}")
+            start_crawl(listing_url, output_xlsx, driver=driver, lastp=True, add_pages=True)
+        else:
+            print(f"Page number: {page_num} | Position: {counter}")
+            try:
+                if counter % 10 == 0:
+                    # this driver variable replaces the previous one that was closed
+                    start_crawl(listing_url, output_xlsx, driver=driver, add_pages=True, restart=True,
+                                first_listing_url=first_listing_url)
+                    counter += 1
+                else:
+                    start_crawl(listing_url, output_xlsx, driver=driver, add_pages=True,
+                                first_listing_url=first_listing_url)
+                    counter += 1
+            except NoAdsFound:
+                close_firefox(driver, no_ads_found=True)
+                break
 
 
 def parse_estate_url(first_listing_url: str, listing_url: str, estate_url: str,
@@ -379,7 +393,7 @@ def store_in_database(title: str, contact_name: str, list_phone_numbers: list, l
     :param first_listing_url: Copy of the first listing URL (page 1).
     """
 
-    if not cur and conn:
+    if not db_connected:
         connect_db()
     print_data(title, contact_name, list_phone_numbers, list_emails, estate_url)
 
@@ -485,7 +499,7 @@ print(f"Started at {begin.strftime('%c')}")
 # output_file = input('Enter a name of an output .xlsx file (extension name included):\n')
 # to_page = input('Enter a number of pages to scrape the data up to:\n')
 
-# first_url = 'https://vacances.seloger.com/location-vacances-france/savoie-10000007425'
+
 first_url = 'https://www.traum-ferienwohnungen.de/europa/deutschland/schleswig-holstein/ergebnisse/' \
             '?person=34&is_in_clicked_search=1'
 # first_url = 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'
@@ -493,6 +507,7 @@ first_url = 'https://www.traum-ferienwohnungen.de/europa/deutschland/schleswig-h
 #             'hebergement-type:appartement,studio,autre-appartement,bateau,catamaran,peniche,voilier,yacht,' \
 #             'autre-bateau,bungalow-mobilhome,chalet,chateau-manoir,gite,insolite,cabane-arbre,moulin,phare,' \
 #             'roulotte,tipi,yourte,autre-insolite,maison-villa,mas,riad,villa,autre-maison'
+# first_url = 'https://vacances.seloger.com/location-vacances-france/savoie-10000007425'
 
 xlsx = 'traum_ferienwohnungen.xlsx'
 
