@@ -3,12 +3,17 @@
 Web scraper written in Selenium (Python) inspired by my work in a call center, collecting contact data of rental 
 agencies and individuals offering their estates online.
 
-Dependencies:
+Dependencies :
+- Linux
 - pyenv global 3.7.0; python -m venv venv370; pyenv global system; source venv370/bin/activate
 - (venv370) pip install selenium
 - (venv370) pip install openpyxl
 - (venv370) pip install pymysql
-- (mysql, planning on auto-creating feature of the db scheme at the moment)
+- Firefox v.65 with add-ons uBlock Origin and NoScript installed
+- MariaDB v. 10.3.12
+- execute `install_db.py` to create a new database user and import a database scheme
+- unzip `helpers/mrgxem71.scraping.zip` folder into `/home/your_username/.mozilla/firefox` (linux) and set `linux_user`
+variable to match in `contact_scraper.py`
 
 How it works:
 1. When neither from_page nor to_page arguments were input (int), start scraping from the first page to the last page 
@@ -34,13 +39,14 @@ Edit the following line in contact_scraper.py and execute it:
 p = mp.Process(target=start_crawl(first_url, to_page, from_page, output_xlsx=file.xlsx))
 
 where arguments: 
-- first_listing (URL (str) - required)
-- to_page (number (int) - optional)
-- from_page (number (int) - optional)
-- output_xlsx=file.xlsx (file name ending with '.xlsx' (str) - required until an auto-creation feature of a database 
+- `first_listing` (URL (str) - required)
+- `to_page` (number (int) - optional)
+- `from_page` (number (int) - optional)
+- `output_xlsx=file.xlsx` (file name ending with '.xlsx' (str) - required until an auto-creation feature of a database 
 scheme implemented)
 
 example:
 
-first_listing_url = 'https://vacances.seloger.com/location-vacances-france/savoie-10000007425'
-p = mp.Process(target=start_crawl(first_listing_url, 30, 15, output_xlsx='file.xlsx'))
+`first_listing_url = 'https://vacances.seloger.com/location-vacances-france/savoie-10000007425'`
+
+`p = mp.Process(target=start_crawl(first_listing_url, 30, 15, output_xlsx='file.xlsx'))`

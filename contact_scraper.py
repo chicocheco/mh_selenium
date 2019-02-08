@@ -34,6 +34,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException,
 
 import sl_selectors
 
+linux_user = 'standa'
 conn, cur = None, None
 db_connected = False
 
@@ -45,7 +46,6 @@ def connect_db():
     conn = pymysql.connect(host='localhost', unix_socket='/run/mysqld/mysqld.sock',
                            user='mh_selenium', passwd='mh_selenium', db='mh', charset='utf8')
     cur = conn.cursor()
-    cur.execute('USE mh')
     db_connected = True
     print('--- Database connection established ---\n')
 
@@ -92,7 +92,7 @@ def open_firefox_exts_headless() -> webdriver:
     """
 
     print('Launching Firefox in headless mode...')
-    profile = FirefoxProfile(profile_directory='/home/standa/.mozilla/firefox/mrgxem71.scraping/')
+    profile = FirefoxProfile(profile_directory=f'/home/{linux_user}/.mozilla/firefox/mrgxem71.scraping/')
     options = Options()
     options.headless = True
     driver = webdriver.Firefox(firefox_profile=profile, options=options)
@@ -500,9 +500,9 @@ print(f"Started at {begin.strftime('%c')}")
 # to_page = input('Enter a number of pages to scrape the data up to:\n')
 
 
-first_url = 'https://www.traum-ferienwohnungen.de/europa/deutschland/schleswig-holstein/ergebnisse/' \
-            '?person=34&is_in_clicked_search=1'
-# first_url = 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'
+# first_url = 'https://www.traum-ferienwohnungen.de/europa/deutschland/schleswig-holstein/ergebnisse/' \
+#             '?person=34&is_in_clicked_search=1'
+first_url = 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'
 # first_url = 'https://www.vivaweek.com/fr/locations-vacances/herault-languedoc-roussillon-france/' \
 #             'hebergement-type:appartement,studio,autre-appartement,bateau,catamaran,peniche,voilier,yacht,' \
 #             'autre-bateau,bungalow-mobilhome,chalet,chateau-manoir,gite,insolite,cabane-arbre,moulin,phare,' \
