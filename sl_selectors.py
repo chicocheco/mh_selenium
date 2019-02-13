@@ -91,7 +91,7 @@ class MilAnuncios:
         self.to_page = to_page
 
     def setup_driver(self):
-        self.driver.implicitly_wait(5)
+        self.driver.implicitly_wait(3)
 
     def get_number_last_page(self):
         self.setup_driver()

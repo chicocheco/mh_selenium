@@ -1,22 +1,10 @@
 #! python3.7
 # author: Stanislav Matas
-# date: 03/02/2019
-# name: Selenium web scraper originally for MH marketing to collect contact data into a database about estates
-# to be rent in selected areas of Spain, France, Germany, Italy, England and so on.
+# date: 13/02/2019
+# Web scraper written in Selenium (Python) inspired by my work in a call center, collecting contact data of rental
+# agencies and individuals offering their estates online.
 
-# How to use
-# 0. the input URL MUST be always the first URL of the listing (page number 1)
-# 1. when neither from_page nor to_page is input, run it from the first page to the last page that was found
-# 2. when only from_page was input (!with keyword argument!), run it from from_page to the last page that was found
-# 3. when only to_page was input, run it from the first page to the to_page but:
-#      a) to_page cannot exceed last existing page, it is lowered to the last page that was found if so
-#      b) if to_page=1 was input, only 1 page is scraped and the program terminates if so
-# 4. when from_page and to_page were input, run from from_page to to_page but:
-#      a) to_page cannot exceed last existing page, it is lowered to the last page that was found if so
-#      b) to_page must be a bigger number than from_page, a warning appears and the program terminates if so
-#      c) if from_page and to_page are the same numbers, only 1 page is scraped and the program terminates if so
-
-
+import argparse
 import multiprocessing as mp
 import datetime
 import time
@@ -120,13 +108,13 @@ def recognize_sln_selectors(driver: webdriver = None, first_listing_url: str = N
     """Based on the input first listing URL, return the corresponding set of Selenium selectors for data scraping."""
 
     websites = {'https://www.traum-ferienwohnungen.de':
-                sl_selectors.TraumFerienWohnungen(driver, first_listing_url, from_page, to_page),
+                    sl_selectors.TraumFerienWohnungen(driver, first_listing_url, from_page, to_page),
                 'https://www.milanuncios.com':
-                sl_selectors.MilAnuncios(driver, first_listing_url, from_page, to_page),
+                    sl_selectors.MilAnuncios(driver, first_listing_url, from_page, to_page),
                 'https://www.vivaweek.com':
-                sl_selectors.VivaWeek(driver, first_listing_url, from_page, to_page),
+                    sl_selectors.VivaWeek(driver, first_listing_url, from_page, to_page),
                 'https://vacances.seloger.com':
-                sl_selectors.VacancesSeloger(driver, first_listing_url, from_page, to_page)
+                    sl_selectors.VacancesSeloger(driver, first_listing_url, from_page, to_page)
                 }
 
     for website, sln_selector in websites.items():
@@ -145,10 +133,6 @@ def evaluate_paging(from_page: int = None, to_page: int = None) -> None:
                   f'of the listing pages to scrape.\n'
                   'Terminating...')
             sys.exit()
-    if from_page and not to_page:
-        print('Set also the upper limit of the listing pages to scrape.\n'
-              'Terminating...')
-        sys.exit()
 
 
 def get_exact_num_last_page(driver: webdriver, first_listing_url: str) -> int:
@@ -491,40 +475,33 @@ def store_in_xlsx_file(title: str, contact_name: str, list_phone_numbers: list, 
     wb.save(filename=output_xlsx)
 
 
-begin = datetime.datetime.now()
-print(f"Started at {begin.strftime('%c')}")
-
-# TODO: add this via argprs module
-# input_start_url = input('Enter an URL with a listing of ads:\n')
-# output_file = input('Enter a name of an output .xlsx file (extension name included):\n')
-# to_page = input('Enter a number of pages to scrape the data up to:\n')
-
-
-# first_url = 'https://www.traum-ferienwohnungen.de/europa/deutschland/schleswig-holstein/ergebnisse/' \
-#             '?person=34&is_in_clicked_search=1'
-first_url = 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'
-# first_url = 'https://www.vivaweek.com/fr/locations-vacances/herault-languedoc-roussillon-france/' \
-#             'hebergement-type:appartement,studio,autre-appartement,bateau,catamaran,peniche,voilier,yacht,' \
-#             'autre-bateau,bungalow-mobilhome,chalet,chateau-manoir,gite,insolite,cabane-arbre,moulin,phare,' \
-#             'roulotte,tipi,yourte,autre-insolite,maison-villa,mas,riad,villa,autre-maison'
-# first_url = 'https://vacances.seloger.com/location-vacances-france/savoie-10000007425'
-
-xlsx = 'traum_ferienwohnungen.xlsx'
-
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Scrape contact data from estate websites",
+                                     formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=30,
+                                                                                         width=110))
+    parser.add_argument("url", help="URL address of an estate listing (page #1)")
+    parser.add_argument("-b", "--begin", metavar="NUMBER", type=int,
+                        help="number of a page to begin scraping data at (default is 1)")
+    parser.add_argument("-e", "--end", metavar="NUMBER", type=int,
+                        help="number of a page to end scraping data at (default is last)")
+    parser.add_argument("-o", "--output", metavar='FILE',
+                        help="filename of a xlsx file to store the data in  (default is to store in a database)")
+    args = parser.parse_args()
+
+    begin = datetime.datetime.now()
+    print(f"Started at {begin.strftime('%H:%M:%S')}")
     try:
-        # arguments: first_listing, to_page, from_page, output_xlsx=file.xlsx
-        p = mp.Process(target=start_crawl(first_url))
-        # run 'worker' in a subprocess
+        p = mp.Process(target=start_crawl(listing_url=args.url, to_page=args.end,
+                                          from_page=args.begin, output_xlsx=args.output))
         p.start()
-        # make the main process wait for `worker` to end
         p.join()
         # all memory used by the subprocess will be freed to the OS
+    except KeyboardInterrupt:
+        print(' Terminating...\n')
     finally:
         if conn and cur:
             disconnect_db()
-
-end = datetime.datetime.now()
-print(f"Finished at {end.strftime('%c')}")
-delta = str(end - begin).split('.')[0]
-print(f'Time duration: {delta}')
+    end = datetime.datetime.now()
+    print(f"Finished at {end.strftime('%H:%M:%S')}")
+    delta = str(end - begin).split('.')[0]
+    print(f'Time duration: {delta}')

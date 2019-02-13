@@ -3,17 +3,15 @@
 Web scraper written in Selenium (Python) inspired by my work in a call center, collecting contact data of rental 
 agencies and individuals offering their estates online.
 
-Dependencies :
-- Linux
-- pyenv global 3.7.0; python -m venv venv370; pyenv global system; source venv370/bin/activate
-- (venv370) pip install selenium
-- (venv370) pip install openpyxl
-- (venv370) pip install pymysql
-- Firefox v.65 with add-ons uBlock Origin and NoScript installed
-- MariaDB v. 10.3.12
-- execute `install_db.py` to create a new database user and import a database scheme
-- unzip `helpers/mrgxem71.scraping.zip` folder into `/home/your_username/.mozilla/firefox` (linux) and set `linux_user`
-variable to match in `contact_scraper.py`
+Dependencies:
+- linux
+- python 3.7
+- selenium
+- openpyxl
+- pymysql
+- mariadb (execute `install_db.py` to create a new database user and import a database scheme)
+- firefox 65 + uBlock Origin and NoScript (unzip `helpers/mrgxem71.scraping.zip` folder into 
+`/home/your_username/.mozilla/firefox` (linux) and set `linux_user` variable to match in `contact_scraper.py`)
 
 How it works:
 1. When neither from_page nor to_page arguments were input (int), start scraping from the first page to the last page 
@@ -35,18 +33,16 @@ following websites:
 - https://www.vivaweek.com (FR)
 - www.traum-ferienwohnungen.de (DE)
 
-Edit the following line in contact_scraper.py and execute it:
-p = mp.Process(target=start_crawl(first_url, to_page, from_page, output_xlsx=file.xlsx))
+Sample URLs to test with:
+- `https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/`
+- `https://vacances.seloger.com/location-vacances-france/savoie-10000007425`
+- `https://www.vivaweek.com/fr/locations-vacances/herault-languedoc-roussillon-france/hebergement-type:appartement,studio,autre-appartement,bateau,catamaran,peniche,voilier,yacht,autre-bateau,bungalow-mobilhome,chalet,chateau-manoir,gite,insolite,cabane-arbre,moulin,phare,roulotte,tipi,yourte,autre-insolite,maison-villa,mas,riad,villa,autre-maison`
+- `https://www.traum-ferienwohnungen.de/europa/deutschland/schleswig-holstein/ergebnisse/?person=34&is_in_clicked_search=1`
 
-where arguments: 
-- `first_listing` (URL (str) - required)
-- `to_page` (number (int) - optional)
-- `from_page` (number (int) - optional)
-- `output_xlsx=file.xlsx` (file name ending with '.xlsx' (str) - required until an auto-creation feature of a database 
-scheme implemented)
+Examples of how to run the program:
+- `python contact_scraper.py -begin 50 -end 100 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'`
+- `python contact_scraper.py -b 33 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'`
+- `python contact_scraper.py -e 66 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'`
+- `python contact_scraper.py 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'`
 
-example:
-
-`first_listing_url = 'https://vacances.seloger.com/location-vacances-france/savoie-10000007425'`
-
-`p = mp.Process(target=start_crawl(first_listing_url, 30, 15, output_xlsx='file.xlsx'))`
+Run `contact_scraper.py with --help` to get a description of each parameter.
