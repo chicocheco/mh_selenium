@@ -36,14 +36,13 @@ class TraumFerienWohnungen:
     # these functions are run from direct_url
     def title(self):
         try:
-            return self.driver.find_element_by_xpath('//div[@class="df t--fd-c m--fd-c"]'
-                                                     '/span[@class="pl-s t--p-0 t--light m--p-0 m--light"]').text
+            return self.driver.find_element_by_xpath('//span[@class="f-1 lh-initial bold fs-xxxxxl m-0 m--fs-m"]').text
         except NoSuchElementException:
             return ''
 
     def contact_name(self):
         try:
-            return self.driver.find_element_by_xpath('//p[@class="fs-xl bold mb-s mt-s m--tac"]').text or 'Anonymous'
+            return self.driver.find_element_by_xpath('//p[@class="fs-xl bold mb-s mt-s m--fs-m"]').text or 'Anonymous'
         except NoSuchElementException:
             return 'Anonymous'
 

@@ -33,11 +33,11 @@ following websites:
 - https://www.vivaweek.com (FR)
 - www.traum-ferienwohnungen.de (DE)
 
-Sample URLs to test with:
-- `https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/`
-- `https://vacances.seloger.com/location-vacances-france/savoie-10000007425`
-- `https://www.vivaweek.com/fr/locations-vacances/herault-languedoc-roussillon-france/hebergement-type:appartement,studio,autre-appartement,bateau,catamaran,peniche,voilier,yacht,autre-bateau,bungalow-mobilhome,chalet,chateau-manoir,gite,insolite,cabane-arbre,moulin,phare,roulotte,tipi,yourte,autre-insolite,maison-villa,mas,riad,villa,autre-maison`
-- `https://www.traum-ferienwohnungen.de/europa/deutschland/schleswig-holstein/ergebnisse/?person=34&is_in_clicked_search=1`
+Sample URLs to test with (tested on 04/03/2019):
+- works `https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/`
+- need adjustments `https://vacances.seloger.com/location-vacances-france/savoie-10000007425` 
+- works `https://www.vivaweek.com/fr/locations-vacances/herault-languedoc-roussillon-france/hebergement-type:appartement,studio,autre-appartement,bateau,catamaran,peniche,voilier,yacht,autre-bateau,bungalow-mobilhome,chalet,chateau-manoir,gite,insolite,cabane-arbre,moulin,phare,roulotte,tipi,yourte,autre-insolite,maison-villa,mas,riad,villa,autre-maison`
+- works `https://www.traum-ferienwohnungen.de/europa/deutschland/schleswig-holstein/ergebnisse/?person=34&is_in_clicked_search=1`
 
 Examples of how to run the program:
 - `python contact_scraper.py -begin 50 -end 100 'https://www.milanuncios.com/alquiler-vacaciones-en-las_palmas/'`

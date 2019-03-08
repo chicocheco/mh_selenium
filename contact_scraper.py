@@ -1,6 +1,6 @@
-#! python3.7
+#!/usr/bin/env python3
 # author: Stanislav Matas
-# date: 13/02/2019
+# date: 08/03/2019
 # Web scraper written in Selenium (Python) inspired by my work in a call center, collecting contact data of rental
 # agencies and individuals offering their estates online.
 
@@ -475,6 +475,7 @@ def store_in_xlsx_file(title: str, contact_name: str, list_phone_numbers: list, 
     wb.save(filename=output_xlsx)
 
 
+# this 'if' ensures it's not run if imported
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Scrape contact data from estate websites",
                                      formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=30,
