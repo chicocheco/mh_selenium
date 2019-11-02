@@ -85,20 +85,21 @@ def open_firefox_exts_headless() -> webdriver:
     options.headless = True
     driver = webdriver.Firefox(firefox_profile=profile, options=options)
     time.sleep(2)
-    while True:
-        try:
-            driver.get('about:addons')
-            driver.find_element_by_name('NoScript').click()
-            driver.find_element_by_id('detail-enable-btn').click()
-            print(' - NoScript add-on enabled.')
-            driver.back()
-            driver.find_element_by_name('uBlock Origin').click()
-            driver.find_element_by_id('detail-enable-btn').click()
-            print(' - uBlock Origin add-on enabled.\n')
-            break
-        except (NoSuchElementException, InvalidElementStateException):
-            print('Could not enable the extensions. Retrying...')
-            time.sleep(2)
+    # TODO: not working in FF 70
+    # while True:
+    #     try:
+    #         driver.get('about:addons')
+    #         driver.find_element_by_name('NoScript').click()
+    #         driver.find_element_by_id('detail-enable-btn').click()
+    #         print(' - NoScript add-on enabled.')
+    #         driver.back()
+    #         driver.find_element_by_name('uBlock Origin').click()
+    #         driver.find_element_by_id('detail-enable-btn').click()
+    #         print(' - uBlock Origin add-on enabled.\n')
+    #         break
+    #     except (NoSuchElementException, InvalidElementStateException):
+    #         print('Could not enable the extensions. Retrying...')
+    #         time.sleep(2)
     driver.set_page_load_timeout(30)
     return driver
 

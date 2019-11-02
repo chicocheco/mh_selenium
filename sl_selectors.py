@@ -108,7 +108,7 @@ class MilAnuncios:
 
     def title(self):
         try:
-            return self.driver.find_element_by_xpath('//div[@class="pagAnuTituloBox"]/a').text
+            return self.driver.find_element_by_xpath('//h1[@class="ad-detail-title"]').text
         except NoSuchElementException:
             return ''
 
@@ -151,7 +151,11 @@ class MilAnuncios:
             else:
                 return contact_name
         except NoSuchElementException:
-            return 'Anonymous'
+            try:
+                contact_name = self.driver.find_element_by_xpath('//div[@class="nombreTienda"]').text
+                return contact_name
+            except NoSuchElementException:
+                return 'Anonymous'
 
     # in popup
     def list_phone_numbers(self):
